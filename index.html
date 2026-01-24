@@ -70,7 +70,7 @@ button {
 }
 
 .teamLabel {
-  font-size:14px;
+  font-size:13px;
   opacity:.7;
   margin-bottom:4px;
 }
@@ -83,7 +83,7 @@ button {
 .center { text-align:center; }
 .big { font-size:22px; font-weight:800; }
 
-#leaderboard { font-size:20px; line-height:1.7; }
+#leaderboard, #liveBoard { font-size:18px; line-height:1.7; }
 </style>
 </head>
 
@@ -135,13 +135,19 @@ button {
     <div class="center big" id="roundCount"></div>
   </div>
 
+  <!-- LIVE LEADERBOARD -->
+  <div class="section">
+    <h2>🔥 Live Leaderboard</h2>
+    <div id="liveBoard"></div>
+  </div>
+
   <div id="courts"></div>
 
   <button class="secondary" onclick="nextRound()">Next Round</button>
   <button class="gray" onclick="reset()">Reset Session</button>
 </div>
 
-<!-- LEADERBOARD -->
+<!-- FINAL LEADERBOARD -->
 <div id="end" class="section" style="display:none">
   <h2>🏆 Final Leaderboard</h2>
   <div id="leaderboard"></div>
@@ -175,6 +181,7 @@ function start(){
   totalRounds = Number(document.getElementById("totalRounds").value);
   document.getElementById("setup").style.display="none";
   document.getElementById("game").style.display="block";
+  updateLiveBoard();
   buildRound();
 }
 
@@ -192,15 +199,11 @@ function buildRound(){
   for(let c=1;c<=courts;c++){
     let g=players.slice(index,index+4); if(g.length<4) break; index+=4;
     div.innerHTML+=`
-      <div class="court" id="court${c}">
+      <div class="court">
         <h3 class="center">Court ${c}</h3>
         <div class="row">
-          <div class="pill" id="c${c}t1">
-            <div class="teamLabel">TEAM 1</div>${g[0]} & ${g[1]}
-          </div>
-          <div class="pill" id="c${c}t2">
-            <div class="teamLabel">TEAM 2</div>${g[2]} & ${g[3]}
-          </div>
+          <div class="pill" id="c${c}t1"><div class="teamLabel">TEAM 1</div>${g[0]} & ${g[1]}</div>
+          <div class="pill" id="c${c}t2"><div class="teamLabel">TEAM 2</div>${g[2]} & ${g[3]}</div>
         </div>
         <button onclick="win(${c},1,'${g[0]}','${g[1]}','${g[2]}','${g[3]}')">Team 1 Won</button>
         <button onclick="win(${c},2,'${g[2]}','${g[3]}','${g[0]}','${g[1]}')">Team 2 Won</button>
@@ -219,6 +222,14 @@ function win(court,team,w1,w2,l1,l2){
 
   stats[w1].wins++; stats[w2].wins++;
   stats[l1].losses++; stats[l2].losses++;
+
+  updateLiveBoard();
+}
+
+function updateLiveBoard(){
+  let board=Object.entries(stats).sort((a,b)=>b[1].wins-a[1].wins);
+  document.getElementById("liveBoard").innerHTML =
+    board.map((p,i)=>`${i+1}. ${p[0]} — ✅ ${p[1].wins} | ❌ ${p[1].losses}`).join("<br>");
 }
 
 function startTimer(){
@@ -239,10 +250,7 @@ function nextRound(){
 function endSession(){
   document.getElementById("game").style.display="none";
   document.getElementById("end").style.display="block";
-
-  let board=Object.entries(stats).sort((a,b)=>b[1].wins-a[1].wins);
-  document.getElementById("leaderboard").innerHTML =
-    board.map((p,i)=>`${i+1}. ${p[0]} — ✅ ${p[1].wins} wins | ❌ ${p[1].losses} losses`).join("<br>");
+  document.getElementById("leaderboard").innerHTML = document.getElementById("liveBoard").innerHTML;
 }
 
 function reset(){ location.reload(); }
