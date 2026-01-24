@@ -64,16 +64,41 @@ button {
 
 .row { display:flex; gap:8px; margin-bottom:8px; }
 
-.pill {
-  flex:1; text-align:center; background:#0f172a;
-  padding:10px 6px; border-radius:999px; font-weight:700;
+.team-box {
+  flex:1;
+  text-align:center;
+  background:#0f172a;
+  padding:12px 8px;
+  border-radius:14px;
+  font-weight:800;
+  border:1px solid #1e293b;
 }
+
+.team-label {
+  font-size:12px;
+  opacity:.7;
+  margin-bottom:4px;
+}
+
+.team-win {
+  background:#14532d !important;
+  border:1px solid #22c55e !important;
+  color:#dcfce7;
+}
+
+.team-lose { opacity:.4; }
 
 .center { text-align:center; }
 .big { font-size:22px; font-weight:800; }
 
-#leaderboard { font-size:20px; line-height:1.7; }
-.leader-row { background:#111; padding:10px; border-radius:10px; margin-bottom:8px; border:1px solid #333; }
+#leaderboard { font-size:18px; line-height:1.6; }
+.leader-row {
+  background:#020617;
+  padding:10px;
+  border-radius:12px;
+  margin-bottom:8px;
+  border:1px solid #1e293b;
+}
 </style>
 </head>
 
@@ -139,7 +164,6 @@ button {
 </div>
 
 <script>
-// Players are objects now: {name, wins, losses, games}
 let players = [];
 let round = 1, totalRounds = 1, timerInterval;
 
@@ -148,8 +172,8 @@ document.getElementById("qrImg").src =
 
 function addFromQR(){
   let name = document.getElementById("qrName").value.trim();
-  if(!name || players.some(p => p.name === name)) return;
-  players.push({name:name, wins:0, losses:0, games:0});
+  if(!name || players.some(p=>p.name===name)) return;
+  players.push({name,wins:0,losses:0,games:0});
   document.getElementById("qrList").innerText = players.map(p=>p.name).join(", ");
   document.getElementById("qrName").value="";
 }
@@ -162,9 +186,9 @@ function goSetup(){
 
 function start(){
   let names = document.getElementById("players").value.split("\n").map(p=>p.trim()).filter(p=>p);
-  players = names.map(name => {
-    let existing = players.find(p=>p.name===name);
-    return existing || {name, wins:0, losses:0, games:0};
+  players = names.map(n=>{
+    let e = players.find(p=>p.name===n);
+    return e || {name:n,wins:0,losses:0,games:0};
   });
   totalRounds = Number(document.getElementById("totalRounds").value);
   document.getElementById("setup").style.display="none";
@@ -177,63 +201,59 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random(
 function buildRound(){
   document.getElementById("roundLabel").innerText = `ROUND ${round}`;
   document.getElementById("roundCount").innerText = `Round ${round} of ${totalRounds}`;
-  startTimer();
-  shuffle(players);
+  startTimer(); shuffle(players);
 
-  let div = document.getElementById("courts"); div.innerHTML = "";
-  let index = 0, courts = Number(document.getElementById("courtsCount").value);
+  let div = document.getElementById("courts"); div.innerHTML="";
+  let index=0, courts=Number(document.getElementById("courtsCount").value);
 
-  for(let c=1; c<=courts; c++){
+  for(let c=1;c<=courts;c++){
     let g = players.slice(index,index+4); if(g.length<4) break; index+=4;
-    div.innerHTML += `
+    let id=`court-${round}-${c}`;
+
+    div.innerHTML+=`
       <div class="court">
         <h3 class="center">Court ${c}</h3>
         <div class="row">
-          <div class="pill">${g[0].name} & ${g[1].name}</div>
-          <div class="pill">${g[2].name} & ${g[3].name}</div>
+          <div class="team-box" id="${id}-t1"><div class="team-label">TEAM 1</div>${g[0].name} & ${g[1].name}</div>
+          <div class="team-box" id="${id}-t2"><div class="team-label">TEAM 2</div>${g[2].name} & ${g[3].name}</div>
         </div>
-        <button onclick="recordWin([g[0],g[1]], [g[2],g[3]])">Team 1 Won</button>
-        <button onclick="recordWin([g[2],g[3]], [g[0],g[1]])">Team 2 Won</button>
-      </div>
-    `;
+        <button onclick="recordWin([g[0],g[1]],[g[2],g[3]],'${id}',1)">Team 1 Won</button>
+        <button onclick="recordWin([g[2],g[3]],[g[0],g[1]],'${id}',2)">Team 2 Won</button>
+      </div>`;
   }
 
-  if(players.length > index){
-    div.innerHTML += `<div class="court"><h3 class="center">🪑 Sitting Out</h3><p class="center">${players.slice(index).map(p=>p.name).join(", ")}</p></div>`;
+  if(players.length>index){
+    div.innerHTML+=`<div class="court"><h3 class="center">🪑 Sitting Out</h3><p class="center">${players.slice(index).map(p=>p.name).join(", ")}</p></div>`;
   }
 }
 
-function recordWin(winners, losers){
-  winners.forEach(p=>{ p.wins++; p.games++; });
-  losers.forEach(p=>{ p.losses++; p.games++; });
+function recordWin(winners,losers,id,team){
+  winners.forEach(p=>{p.wins++;p.games++;});
+  losers.forEach(p=>{p.losses++;p.games++;});
+  document.getElementById(id+"-t1").classList.toggle("team-win",team===1);
+  document.getElementById(id+"-t2").classList.toggle("team-win",team===2);
+  document.getElementById(id+"-t1").classList.toggle("team-lose",team===2);
+  document.getElementById(id+"-t2").classList.toggle("team-lose",team===1);
   updateLeaderboard();
-  alert("Result saved!");
 }
 
 function startTimer(){
   clearInterval(timerInterval);
-  let sec = Number(document.getElementById("roundMinutes").value) * 60;
-  timerInterval = setInterval(()=>{
+  let sec=document.getElementById("roundMinutes").value*60;
+  timerInterval=setInterval(()=>{
     let m=Math.floor(sec/60), s=sec%60;
-    document.getElementById("timer").innerText = `⏱ ${m}:${s.toString().padStart(2,"0")}`;
-    if(sec--<=0){ clearInterval(timerInterval); alert("Round over!"); }
+    document.getElementById("timer").innerText=`⏱ ${m}:${s.toString().padStart(2,"0")}`;
+    if(sec--<=0){clearInterval(timerInterval);alert("Round over!");}
   },1000);
 }
 
-function nextRound(){
-  if(round >= totalRounds){ endSession(); return; }
-  round++; buildRound();
-}
+function nextRound(){ if(round>=totalRounds){endSession();} else {round++;buildRound();} }
 
 function updateLeaderboard(){
-  let board = document.getElementById("leaderboard");
-  let sorted = [...players].sort((a,b)=>b.wins - a.wins);
-  board.innerHTML = sorted.map((p,i)=>`
-    <div class="leader-row">
-      <strong>${i+1}. ${p.name}</strong><br>
-      Wins: ${p.wins} | Losses: ${p.losses} | Games: ${p.games}
-    </div>
-  `).join("");
+  let sorted=[...players].sort((a,b)=>b.wins-a.wins);
+  document.getElementById("leaderboard").innerHTML = sorted.map((p,i)=>`
+    <div class="leader-row"><strong>${i+1}. ${p.name}</strong><br>
+    Wins: ${p.wins} | Losses: ${p.losses} | Games: ${p.games}</div>`).join("");
 }
 
 function endSession(){
