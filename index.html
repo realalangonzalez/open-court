@@ -64,41 +64,26 @@ button {
 
 .row { display:flex; gap:8px; margin-bottom:8px; }
 
-.team-box {
-  flex:1;
-  text-align:center;
-  background:#0f172a;
-  padding:12px 8px;
-  border-radius:14px;
-  font-weight:800;
-  border:1px solid #1e293b;
+.pill {
+  flex:1; text-align:center; background:#0f172a;
+  padding:10px 6px; border-radius:14px; font-weight:800;
 }
 
-.team-label {
-  font-size:12px;
+.teamLabel {
+  font-size:14px;
   opacity:.7;
   margin-bottom:4px;
 }
 
-.team-win {
-  background:#14532d !important;
-  border:1px solid #22c55e !important;
-  color:#dcfce7;
+.winner {
+  background:#22c55e !important;
+  color:#022c22;
 }
-
-.team-lose { opacity:.4; }
 
 .center { text-align:center; }
 .big { font-size:22px; font-weight:800; }
 
-#leaderboard { font-size:18px; line-height:1.6; }
-.leader-row {
-  background:#020617;
-  padding:10px;
-  border-radius:12px;
-  margin-bottom:8px;
-  border:1px solid #1e293b;
-}
+#leaderboard { font-size:20px; line-height:1.7; }
 </style>
 </head>
 
@@ -164,32 +149,29 @@ button {
 </div>
 
 <script>
-let players = [];
-let round = 1, totalRounds = 1, timerInterval;
+let players=[], stats={}, round=1, totalRounds=1, timerInterval;
 
 document.getElementById("qrImg").src =
-  "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + location.href;
+  "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data="+location.href;
 
 function addFromQR(){
   let name = document.getElementById("qrName").value.trim();
-  if(!name || players.some(p=>p.name===name)) return;
-  players.push({name,wins:0,losses:0,games:0});
-  document.getElementById("qrList").innerText = players.map(p=>p.name).join(", ");
+  if(!name || players.includes(name)) return;
+  players.push(name);
+  stats[name]={wins:0, losses:0};
+  document.getElementById("qrList").innerText = players.join(", ");
   document.getElementById("qrName").value="";
 }
 
 function goSetup(){
   document.getElementById("qr").style.display="none";
   document.getElementById("setup").style.display="block";
-  document.getElementById("players").value = players.map(p=>p.name).join("\n");
+  document.getElementById("players").value = players.join("\n");
 }
 
 function start(){
-  let names = document.getElementById("players").value.split("\n").map(p=>p.trim()).filter(p=>p);
-  players = names.map(n=>{
-    let e = players.find(p=>p.name===n);
-    return e || {name:n,wins:0,losses:0,games:0};
-  });
+  players = document.getElementById("players").value.split("\n").map(p=>p.trim()).filter(p=>p);
+  players.forEach(p=>stats[p] ||= {wins:0, losses:0});
   totalRounds = Number(document.getElementById("totalRounds").value);
   document.getElementById("setup").style.display="none";
   document.getElementById("game").style.display="block";
@@ -201,40 +183,42 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random(
 function buildRound(){
   document.getElementById("roundLabel").innerText = `ROUND ${round}`;
   document.getElementById("roundCount").innerText = `Round ${round} of ${totalRounds}`;
-  startTimer(); shuffle(players);
+  startTimer();
+  shuffle(players);
 
-  let div = document.getElementById("courts"); div.innerHTML="";
+  let div=document.getElementById("courts"); div.innerHTML="";
   let index=0, courts=Number(document.getElementById("courtsCount").value);
 
   for(let c=1;c<=courts;c++){
-    let g = players.slice(index,index+4); if(g.length<4) break; index+=4;
-    let id=`court-${round}-${c}`;
-
+    let g=players.slice(index,index+4); if(g.length<4) break; index+=4;
     div.innerHTML+=`
-      <div class="court">
+      <div class="court" id="court${c}">
         <h3 class="center">Court ${c}</h3>
         <div class="row">
-          <div class="team-box" id="${id}-t1"><div class="team-label">TEAM 1</div>${g[0].name} & ${g[1].name}</div>
-          <div class="team-box" id="${id}-t2"><div class="team-label">TEAM 2</div>${g[2].name} & ${g[3].name}</div>
+          <div class="pill" id="c${c}t1">
+            <div class="teamLabel">TEAM 1</div>${g[0]} & ${g[1]}
+          </div>
+          <div class="pill" id="c${c}t2">
+            <div class="teamLabel">TEAM 2</div>${g[2]} & ${g[3]}
+          </div>
         </div>
-        <button onclick="recordWin([g[0],g[1]],[g[2],g[3]],'${id}',1)">Team 1 Won</button>
-        <button onclick="recordWin([g[2],g[3]],[g[0],g[1]],'${id}',2)">Team 2 Won</button>
+        <button onclick="win(${c},1,'${g[0]}','${g[1]}','${g[2]}','${g[3]}')">Team 1 Won</button>
+        <button onclick="win(${c},2,'${g[2]}','${g[3]}','${g[0]}','${g[1]}')">Team 2 Won</button>
       </div>`;
   }
 
   if(players.length>index){
-    div.innerHTML+=`<div class="court"><h3 class="center">🪑 Sitting Out</h3><p class="center">${players.slice(index).map(p=>p.name).join(", ")}</p></div>`;
+    div.innerHTML+=`<div class="court"><h3 class="center">🪑 Sitting Out</h3><p class="center">${players.slice(index).join(", ")}</p></div>`;
   }
 }
 
-function recordWin(winners,losers,id,team){
-  winners.forEach(p=>{p.wins++;p.games++;});
-  losers.forEach(p=>{p.losses++;p.games++;});
-  document.getElementById(id+"-t1").classList.toggle("team-win",team===1);
-  document.getElementById(id+"-t2").classList.toggle("team-win",team===2);
-  document.getElementById(id+"-t1").classList.toggle("team-lose",team===2);
-  document.getElementById(id+"-t2").classList.toggle("team-lose",team===1);
-  updateLeaderboard();
+function win(court,team,w1,w2,l1,l2){
+  document.getElementById(`c${court}t1`).classList.remove("winner");
+  document.getElementById(`c${court}t2`).classList.remove("winner");
+  document.getElementById(`c${court}t${team}`).classList.add("winner");
+
+  stats[w1].wins++; stats[w2].wins++;
+  stats[l1].losses++; stats[l2].losses++;
 }
 
 function startTimer(){
@@ -247,19 +231,18 @@ function startTimer(){
   },1000);
 }
 
-function nextRound(){ if(round>=totalRounds){endSession();} else {round++;buildRound();} }
-
-function updateLeaderboard(){
-  let sorted=[...players].sort((a,b)=>b.wins-a.wins);
-  document.getElementById("leaderboard").innerHTML = sorted.map((p,i)=>`
-    <div class="leader-row"><strong>${i+1}. ${p.name}</strong><br>
-    Wins: ${p.wins} | Losses: ${p.losses} | Games: ${p.games}</div>`).join("");
+function nextRound(){
+  if(round>=totalRounds){ endSession(); return; }
+  round++; buildRound();
 }
 
 function endSession(){
   document.getElementById("game").style.display="none";
   document.getElementById("end").style.display="block";
-  updateLeaderboard();
+
+  let board=Object.entries(stats).sort((a,b)=>b[1].wins-a[1].wins);
+  document.getElementById("leaderboard").innerHTML =
+    board.map((p,i)=>`${i+1}. ${p[0]} — ✅ ${p[1].wins} wins | ❌ ${p[1].losses} losses`).join("<br>");
 }
 
 function reset(){ location.reload(); }
